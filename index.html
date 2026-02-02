@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Kecermatan - speed & Accuracy</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 10px; display: flex; justify-content: center; }
+        #app { background: white; width: 100%; max-width: 450px; padding: 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); min-height: 90vh; display: flex; flex-direction: column; }
+        
+        .timer-settings { background: #eff6ff; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
+        .timer-display { font-size: 24px; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        .btn-small { padding: 5px 15px; margin: 0 5px; cursor: pointer; border: 1px solid var(--primary); background: white; border-radius: 5px; }
+
+        .key-container { border: 2px solid #334155; display: grid; grid-template-columns: repeat(5, 1fr); margin: 15px 0; text-align: center; overflow: hidden; border-radius: 8px; background: #fff; }
+        .key-item { border-right: 1px solid #cbd5e1; }
+        .key-item:last-child { border-right: none; }
+        .symbol { font-size: 26px; font-weight: bold; padding: 10px 0; display: block; }
+        .letter { font-size: 14px; background: #f1f5f9; border-top: 1px solid #334155; padding: 4px 0; display: block; font-weight: bold; }
+
+        .q-box { border: 2px dashed #94a3b8; padding: 25px; display: flex; justify-content: space-around; font-size: 32px; margin: 20px 0; border-radius: 12px; background: #fdfdfd; min-height: 40px; }
+        
+        .options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+        .opt-btn { padding: 15px 0; font-size: 18px; font-weight: bold; border: 2px solid #e2e8f0; border-radius: 8px; background: white; cursor: pointer; transition: 0.1s; }
+        .opt-btn.selected { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .nav-controls { display: flex; justify-content: space-between; margin-top: auto; padding-top: 20px; }
+        .nav-btn { flex: 1; margin: 0 5px; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .prev-btn { background: #e2e8f0; }
+        .next-btn { background: var(--primary); color: white; }
+        
+        .review-list { max-height: 250px; overflow-y: auto; text-align: left; margin: 15px 0; border: 1px solid #eee; padding: 10px; border-radius: 8px; }
+        .review-item { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; font-size: 14px; }
+        .correct { color: #16a34a; font-weight: bold; }
+        .wrong { color: #dc2626; font-weight: bold; }
+        
+        .result-card { background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 15px; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="setup-screen">
+        <h2 style="text-align:center">Pengaturan Kolom</h2>
+        <div class="timer-settings">
+            <p>Atur Durasi Maksimal (Menit)</p>
+            <button class="btn-small" onclick="adjustTime(-1)">-</button>
+            <span id="setup-time" style="font-size:20px; font-weight:bold">05:00</span>
+            <button class="btn-small" onclick="adjustTime(1)">+</button>
+        </div>
+        <button class="next-btn" style="width:100%; padding:15px; font-size:18px" onclick="startQuiz()">Mulai Tes</button>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+            <span id="timer-label" class="timer-display">05:00</span>
+            <span id="q-progress" style="font-weight:bold">Soal 1/50</span>
+        </div>
+
+        <div class="key-container" id="static-key-table"></div>
+
+        <div class="q-box" id="question-area"></div>
+
+        <div class="options">
+            <button class="opt-btn" onclick="selectAnswer('A')">A</button>
+            <button class="opt-btn" onclick="selectAnswer('B')">B</button>
+            <button class="opt-btn" onclick="selectAnswer('C')">C</button>
+            <button class="opt-btn" onclick="selectAnswer('D')">D</button>
+            <button class="opt-btn" onclick="selectAnswer('E')">E</button>
+        </div>
+
+        <div class="nav-controls">
+            <button class="nav-btn prev-btn" onclick="nav(-1)">Kembali</button>
+            <button class="nav-btn next-btn" onclick="nav(1)">Lanjut</button>
+        </div>
+    </div>
+
+    <div id="result-screen" class="hidden" style="text-align:center">
+        <h2>Analisis Hasil</h2>
+        
+        <div class="result-card">
+            <h1 id="final-score" style="font-size:48px; margin:5px 0; color:var(--primary)">0%</h1>
+            <p id="stats-text" style="margin:5px 0; font-weight:bold"></p>
+            <p id="time-spent-text" style="color:#6366f1; font-weight:bold; margin:5px 0"></p>
+            <p id="accuracy-text" style="color:#16a34a; font-size:14px; margin:5px 0"></p>
+        </div>
+        
+        <div class="review-list" id="review-container"></div>
+        
+        <button class="next-btn" style="width:100%" onclick="location.reload()">Selesai & Restart</button>
+    </div>
+</div>
+
+<script>
+    const allSymbols = ['Π', 'Δ', 'X', 'Γ', 'ᒧ', 'Ω', 'Σ', 'Φ', 'Ψ', 'λ', 'μ', 'θ', '±', '≠', '∞', '≈', '∩', '∪', '⧻', '◬', '§', '¶'];
+    let masterKey = [];
+    let quizData = [];
+    let userAnswers = new Array(50).fill(null);
+    let currentIndex = 0;
+    let timerSeconds = 300; 
+    let initialTimeSet = 300; 
+    let interval;
+
+    function adjustTime(mins) {
+        let currentMins = Math.floor(timerSeconds / 60);
+        currentMins = Math.max(1, currentMins + mins);
+        timerSeconds = currentMins * 60;
+        initialTimeSet = timerSeconds;
+        document.getElementById('setup-time').innerText = formatTime(timerSeconds);
+    }
+
+    function formatTime(s) {
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function setupColumn() {
+        quizData = [];
+        masterKey = [...allSymbols].sort(() => 0.5 - Math.random()).slice(0, 5);
+        
+        const keyHTML = masterKey.map((s, i) => `
+            <div class="key-item">
+                <span class="symbol">${s}</span>
+                <span class="letter">${['A','B','C','D','E'][i]}</span>
+            </div>
+        `).join('');
+        document.getElementById('static-key-table').innerHTML = keyHTML;
+
+        for(let i=0; i<50; i++) {
+            const missingIdx = Math.floor(Math.random() * 5);
+            const correctLetter = ['A','B','C','D','E'][missingIdx];
+            let questionSymbols = masterKey.filter((_, idx) => idx !== missingIdx).sort(() => 0.5 - Math.random());
+            quizData.push({ question: questionSymbols, correct: correctLetter });
+        }
+    }
+
+    function startQuiz() {
+        setupColumn();
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        renderQuestion();
+        
+        interval = setInterval(() => {
+            timerSeconds--;
+            document.getElementById('timer-label').innerText = formatTime(timerSeconds);
+            if(timerSeconds <= 0) finishQuiz();
+        }, 1000);
+    }
+
+    function renderQuestion() {
+        const data = quizData[currentIndex];
+        document.getElementById('q-progress').innerText = `Soal ${currentIndex + 1}/50`;
+        document.getElementById('question-area').innerHTML = data.question.map(s => `<span>${s}</span>`).join('');
+
+        const btns = document.querySelectorAll('.opt-btn');
+        btns.forEach(b => {
+            b.classList.remove('selected');
+            if(b.innerText === userAnswers[currentIndex]) b.classList.add('selected');
+        });
+    }
+
+    function selectAnswer(letter) {
+        userAnswers[currentIndex] = letter;
+        renderQuestion();
+        setTimeout(() => {
+            if(currentIndex < 49) nav(1);
+            else finishQuiz();
+        }, 100);
+    }
+
+    function nav(dir) {
+        currentIndex = Math.max(0, Math.min(49, currentIndex + dir));
+        renderQuestion();
+    }
+
+    function finishQuiz() {
+        clearInterval(interval);
+        
+        // Calculate Time Spent
+        const timeSpentSeconds = initialTimeSet - timerSeconds;
+        const timeSpentFormatted = formatTime(timeSpentSeconds);
+
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+
+        let correctCount = 0;
+        let answeredCount = 0;
+        let reviewHTML = '';
+
+        quizData.forEach((q, i) => {
+            const isCorrect = userAnswers[i] === q.correct;
+            if(userAnswers[i] !== null) answeredCount++;
+            if(isCorrect) correctCount++;
+            
+            reviewHTML += `
+                <div class="review-item">
+                    <span>Soal #${i+1}</span>
+                    <span class="${isCorrect ? 'correct' : 'wrong'}">
+                        ${userAnswers[i] || '-'} | Kunci: ${q.correct} ${isCorrect ? '✓' : '✗'}
+                    </span>
+                </div>
+            `;
+        });
+
+        const scorePercent = Math.round((correctCount / 50) * 100);
+        const accuracyPercent = answeredCount > 0 ? Math.round((correctCount / answeredCount) * 100) : 0;
+
+        document.getElementById('final-score').innerText = `${scorePercent}%`;
+        document.getElementById('stats-text').innerText = `Benar: ${correctCount} | Salah: ${50 - correctCount}`;
+        document.getElementById('time-spent-text').innerText = `Waktu Pengerjaan: ${timeSpentFormatted}`;
+        document.getElementById('accuracy-text').innerText = `Akurasi Jawaban Terisi: ${accuracyPercent}%`;
+        document.getElementById('review-container').innerHTML = reviewHTML;
+    }
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+
+
+</body>
+</html>
